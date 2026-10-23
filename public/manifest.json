@@ -1,0 +1,16 @@
+{
+  "name": "Dice Lite",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "author": "SenyuDev",
+  "icon": "/logo.png",
+  "description": "Ultra-lightweight 2D dice extension for Owlbear Rodeo with room sync, quick rolls, and BeyondOwl (D&D Beyond) integration.",
+  "action": {
+    "title": "Dice Lite",
+    "icon": "/icon.svg",
+    "popover": "/",
+    "height": 480,
+    "width": 480
+  },
+  "background_url": "/background.html"
+}
