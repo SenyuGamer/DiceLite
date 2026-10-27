@@ -1,3 +1,4 @@
+import { Random, MersenneTwister19937 } from "random-js";
 import { DiceType, getDiceMax } from "../types/DiceType";
 import { Dice, isDice } from "../types/Dice";
 import { Die, isDie } from "../types/Die";
@@ -5,25 +6,98 @@ import { DiceRoll } from "../types/DiceRoll";
 import { getDieFromDice } from "./getDieFromDice";
 import { useSettingsStore } from "../controls/settingsStore";
 
+// Initialize mathematically unbiased Mersenne Twister engine from random-js
+const mtEngine = MersenneTwister19937.autoSeed();
+const randomJs = new Random(mtEngine);
+
 /**
- * Cryptographically secure random integer between min and max (inclusive)
+ * Cryptographically secure random integer with zero-modulo-bias rejection sampling
  */
-export function secureRandomInt(min: number, max: number): number {
+export function cryptoRandomInt(min: number, max: number): number {
   const range = max - min + 1;
+  // Maximum multiple of range that fits in a 32-bit unsigned integer (2^32 = 4294967296)
+  const maxValid = Math.floor(4294967296 / range) * range;
   const array = new Uint32Array(1);
-  window.crypto.getRandomValues(array);
-  return min + (array[0] % range);
+  let rand = 0;
+  do {
+    window.crypto.getRandomValues(array);
+    rand = array[0];
+  } while (rand >= maxValid);
+  return min + (rand % range);
 }
 
 /**
- * Roll a die based on its type using secure PRNG
+ * Pure mathematical random integer using Mersenne Twister 19937 (random-js)
+ */
+export function mersenneRandomInt(min: number, max: number): number {
+  return randomJs.integer(min, max);
+}
+
+/**
+ * Backward compatibility alias
+ */
+export function secureRandomInt(min: number, max: number): number {
+  return cryptoRandomInt(min, max);
+}
+
+/**
+ * Karmic / Fair Roll Tracker (Inspired by Baldur's Gate 3 Karmic Dice)
+ * Prevents frustrating streaks of consecutive low rolls without inflating high rolls.
+ */
+class KarmicStreakTracker {
+  private lowStreak = 0;
+
+  public rollWithKarmicProtection(min: number, max: number): number {
+    // Only apply streak protection to d20 (the main action/test die)
+    if (max < 20) {
+      return randomJs.integer(min, max);
+    }
+
+    const midpoint = Math.floor(max / 2); // 10 for d20
+
+    // If player has suffered 2 consecutive low rolls (<= midpoint)
+    if (this.lowStreak >= 2) {
+      // Roll 2 candidates using random-js and pick the best (soft advantage under the hood)
+      const c1 = randomJs.integer(min, max);
+      const c2 = randomJs.integer(min, max);
+      const candidate = Math.max(c1, c2);
+
+      if (candidate > midpoint) {
+        this.lowStreak = 0;
+        return candidate;
+      } else {
+        // If 3 consecutive failures happened, guarantee an above-average roll on the 4th
+        if (this.lowStreak >= 3) {
+          this.lowStreak = 0;
+          return randomJs.integer(midpoint + 1, max);
+        }
+        this.lowStreak++;
+        return candidate;
+      }
+    }
+
+    const val = randomJs.integer(min, max);
+    if (val <= midpoint) {
+      this.lowStreak++;
+    } else {
+      this.lowStreak = 0;
+    }
+    return val;
+  }
+
+  public reset(): void {
+    this.lowStreak = 0;
+  }
+}
+
+export const karmicTracker = new KarmicStreakTracker();
+
+/**
+ * Roll a die based on its type using the Karmic fair algorithm (random-js)
  */
 export function rollDie(type: DiceType): number {
-  if (type === "D100") {
-    // Return standard 1-100 or percentile
-    return secureRandomInt(1, 100);
-  }
-  return secureRandomInt(1, getDiceMax(type));
+  const max = type === "D100" ? 100 : getDiceMax(type);
+  return karmicTracker.rollWithKarmicProtection(1, max);
 }
 
 export interface EvaluationResult {

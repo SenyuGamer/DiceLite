@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from "react";
+import React, { useRef, useMemo, useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -279,6 +279,190 @@ interface QuickAccessControlsProps {
   setDiceBonus: (bonus: number) => void;
   onResetAll: () => void;
 }
+
+const BonusStepperInput: React.FC<{
+  bonus: number;
+  setDiceBonus: (b: number) => void;
+}> = ({ bonus, setDiceBonus }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [valString, setValString] = useState(bonus === 0 ? "0" : (bonus > 0 ? `+${bonus}` : `${bonus}`));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setValString(bonus === 0 ? "0" : (bonus > 0 ? `+${bonus}` : `${bonus}`));
+    }
+  }, [bonus, isEditing]);
+
+  const commitValue = (val: string) => {
+    setIsEditing(false);
+    const cleaned = val.replace(/^\+/, "").trim();
+    const num = parseInt(cleaned, 10);
+    if (!isNaN(num)) {
+      setDiceBonus(num);
+      setValString(num === 0 ? "0" : (num > 0 ? `+${num}` : `${num}`));
+    } else {
+      setDiceBonus(0);
+      setValString("0");
+    }
+  };
+
+  return (
+    <Stack
+      direction="row"
+      alignItems="center"
+      sx={{
+        height: 34,
+        backgroundColor: "rgba(30, 41, 59, 0.75)",
+        backdropFilter: "blur(6px)",
+        borderRadius: 3,
+        border:
+          bonus !== 0
+            ? "1px solid #f59e0b"
+            : "1px solid rgba(255, 255, 255, 0.15)",
+        boxShadow:
+          bonus !== 0
+            ? "0 0 10px rgba(245, 158, 11, 0.35)"
+            : "0 2px 10px rgba(0, 0, 0, 0.25)",
+        px: 0.4,
+        transition: "border-color 0.15s, box-shadow 0.15s",
+      }}
+    >
+      {/* Botón Restar 1 */}
+      <Tooltip title="-1 al bono" enterDelay={400}>
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDiceBonus(bonus - 1);
+          }}
+          sx={{
+            width: 24,
+            height: 24,
+            color: "#94a3b8",
+            "&:hover": {
+              color: "#f87171",
+              bgcolor: "rgba(239, 68, 68, 0.15)",
+            },
+          }}
+        >
+          <RemoveIcon sx={{ fontSize: 14 }} />
+        </IconButton>
+      </Tooltip>
+
+      {/* Campo editable / Escribir el bono directamente */}
+      <Tooltip title={isEditing ? "" : "Clic para escribir el bono directamente (o doble clic para 0)"} enterDelay={400}>
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsEditing(true);
+            setTimeout(() => {
+              inputRef.current?.focus();
+              inputRef.current?.select();
+            }, 10);
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setDiceBonus(0);
+            setIsEditing(false);
+          }}
+          sx={{
+            px: 0.6,
+            cursor: "text",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 0.4,
+            userSelect: "none",
+            minWidth: 64,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 700,
+              fontSize: "0.68rem",
+              color: "#94a3b8",
+            }}
+          >
+            Bono:
+          </Typography>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={valString}
+              onChange={(e) => setValString(e.target.value)}
+              onBlur={(e) => commitValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  commitValue(valString);
+                } else if (e.key === "Escape") {
+                  setIsEditing(false);
+                  setValString(bonus === 0 ? "0" : (bonus > 0 ? `+${bonus}` : `${bonus}`));
+                }
+              }}
+              style={{
+                width: 38,
+                background: "rgba(15, 23, 42, 0.95)",
+                border: "1px solid #f59e0b",
+                borderRadius: "4px",
+                color: "#f59e0b",
+                fontWeight: 900,
+                fontSize: "0.82rem",
+                textAlign: "center",
+                outline: "none",
+                padding: "1px 2px",
+              }}
+            />
+          ) : (
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 900,
+                fontSize: "0.8rem",
+                minWidth: 20,
+                textAlign: "center",
+                color:
+                  bonus > 0 ? "#f59e0b" : bonus < 0 ? "#ef4444" : "#cbd5e1",
+                borderBottom: "1px dashed rgba(245, 158, 11, 0.4)",
+                px: 0.2,
+                "&:hover": {
+                  color: "#fbbf24",
+                  borderBottomColor: "#f59e0b",
+                },
+              }}
+            >
+              {bonus > 0 ? `+${bonus}` : `${bonus}`}
+            </Typography>
+          )}
+        </Box>
+      </Tooltip>
+
+      {/* Botón Sumar 1 */}
+      <Tooltip title="+1 al bono" enterDelay={400}>
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDiceBonus(bonus + 1);
+          }}
+          sx={{
+            width: 24,
+            height: 24,
+            color: "#94a3b8",
+            "&:hover": {
+              color: "#34d399",
+              bgcolor: "rgba(52, 211, 153, 0.15)",
+            },
+          }}
+        >
+          <AddIcon sx={{ fontSize: 14 }} />
+        </IconButton>
+      </Tooltip>
+    </Stack>
+  );
+};
 
 const QuickAccessControls: React.FC<QuickAccessControlsProps> = ({
   rollMode,
@@ -598,112 +782,8 @@ const QuickAccessControls: React.FC<QuickAccessControlsProps> = ({
           </Tooltip>
         </Stack>
 
-        {/* Quick Bonus Stepper Pill */}
-        <Stack
-          direction="row"
-          alignItems="center"
-          sx={{
-            height: 34,
-            backgroundColor: "rgba(30, 41, 59, 0.75)",
-            backdropFilter: "blur(6px)",
-            borderRadius: 3,
-            border:
-              bonus !== 0
-                ? "1px solid #f59e0b"
-                : "1px solid rgba(255, 255, 255, 0.15)",
-            boxShadow:
-              bonus !== 0
-                ? "0 0 10px rgba(245, 158, 11, 0.35)"
-                : "0 2px 10px rgba(0, 0, 0, 0.25)",
-            px: 0.4,
-            transition: "border-color 0.15s, box-shadow 0.15s",
-          }}
-        >
-          <Tooltip title="-1 al bono" enterDelay={400}>
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDiceBonus(bonus - 1);
-              }}
-              sx={{
-                width: 24,
-                height: 24,
-                color: "#94a3b8",
-                "&:hover": {
-                  color: "#f87171",
-                  bgcolor: "rgba(239, 68, 68, 0.15)",
-                },
-              }}
-            >
-              <RemoveIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Clic para restablecer a 0" enterDelay={400}>
-            <Box
-              onClick={(e) => {
-                e.stopPropagation();
-                setDiceBonus(0);
-              }}
-              sx={{
-                px: 0.8,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 0.4,
-                userSelect: "none",
-                minWidth: 64,
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: "0.68rem",
-                  color: "#94a3b8",
-                }}
-              >
-                Bono:
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: 900,
-                  fontSize: "0.8rem",
-                  minWidth: 20,
-                  textAlign: "center",
-                  color:
-                    bonus > 0 ? "#f59e0b" : bonus < 0 ? "#ef4444" : "#cbd5e1",
-                }}
-              >
-                {bonus > 0 ? `+${bonus}` : `${bonus}`}
-              </Typography>
-            </Box>
-          </Tooltip>
-
-          <Tooltip title="+1 al bono" enterDelay={400}>
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDiceBonus(bonus + 1);
-              }}
-              sx={{
-                width: 24,
-                height: 24,
-                color: "#94a3b8",
-                "&:hover": {
-                  color: "#34d399",
-                  bgcolor: "rgba(52, 211, 153, 0.15)",
-                },
-              }}
-            >
-              <AddIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
-        </Stack>
+        {/* Quick Bonus Stepper Pill (con opción de escribirlo directamente) */}
+        <BonusStepperInput bonus={bonus} setDiceBonus={setDiceBonus} />
       </Stack>
 
       {/* Botón X: Resetear todo debajo de todo */}
